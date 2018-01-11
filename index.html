@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+       #map {
+        height: 100%;
+        width: 100%;
+       }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+      <script src="./donors.js"></script>
+    <script>
+      function initMap() {
+        $('#map').css('height', window.innerHeight);
+          
+        var uluru = {lat: 40.982607, lng: -109.466988};
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 3,
+          center: uluru
+        });
+          
+        var promises = donors.map(function(d){
+//            console.log(d.zip);
+            return new Promise(function(res, rej){
+                $.ajax({
+                    url: `https://maps.googleapis.com/maps/api/geocode/json?address=${d.zip}&key=AIzaSyAOux0vFQ_Q50FaR2_Y_UtQCUDTX--QZE4`
+                }).done(function(r){
+                    if(r.results[0]){
+                        res({
+                            geo:r.results[0].geometry.location,
+                            amt: d.amt,
+                            isAnonymous: d.isAnonymous == "YES",
+                            name: d.name,
+                            comment: d.comment.replace(/\?/g,"'"),
+                            address: r.results[0].formatted_address
+                        });
+                    }
+                    else{
+                        res(null);
+                    }
+                });
+            })
+            
+        });
+        Promise.all(promises).then(function(vals){
+            var infoWindows = [];
+            var markers = vals.map(function(val){
+                if(val){
+                    
+                    var icon = {
+                        url: 'https://cdn0.iconfinder.com/data/icons/small-n-flat/24/678087-heart-128.png',
+                        scaledSize: new google.maps.Size(15, 15), // scaled size
+                        origin: new google.maps.Point(0,0), // origin
+                        anchor: new google.maps.Point(0, 0) // anchor
+                    };
+                    
+                    var geoLatOffset = Math.random() * (.01 - .0001) + .0001;
+                    var geoLngOffset = Math.random() * (.01 - .0001) + .0001;
+                    geoLatOffset *= Math.floor(Math.random()*2) == 1 ? 1 : -1;
+                    geoLngOffset *= Math.floor(Math.random()*2) == 1 ? 1 : -1;
+                    
+                    val.geo.lat += geoLatOffset;
+                    val.geo.lng += geoLngOffset;
+                    
+                    var marker = new google.maps.Marker({
+                      position: val.geo,
+                      map: map,
+                      //icon: icon
+                    });
+                    
+                    
+                    var name = val.isAnonymous ? "Anonymous" : val.name;
+                    var content = `
+                        <div> 
+                            <h1 class="firstHeading">${name}</h1>
+                            <p>${val.address}</p>
+                            <h3>$${val.amt.toLocaleString()}</h3>
+                            <p>${val.comment}</p>
+                        </div>
+                    `,
+                    infowindow = new google.maps.InfoWindow({
+                      content: content
+                    });
+                    
+                    infoWindows.push(infowindow);
+                    
+                    google.maps.event.addListener(marker, 'click', (function(marker) { 
+                       return function() {  
+                           infoWindows.forEach(function(i) {i.close();});
+                           infowindow.setContent(content);  
+                           infowindow.open(map, marker);  
+                       }  
+                     })(marker));  
+                    return marker;
+                }
+            }).filter(m => m);
+            
+        })
+
+      }
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAOux0vFQ_Q50FaR2_Y_UtQCUDTX--QZE4&callback=initMap">
+    </script>
+  </body>
+</html>
+
+
+<!-- AIzaSyAOux0vFQ_Q50FaR2_Y_UtQCUDTX--QZE4 -->
