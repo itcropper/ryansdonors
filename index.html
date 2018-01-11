@@ -6,15 +6,84 @@
        #map {
         height: 100%;
         width: 100%;
+        visibility:hidden;
        }
+    .loading-wrapper {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+        font-size: 28px;
+        background: #659ebc;
+        color: white;
+    }
+
+    .loader {
+        opacity: 0;
+        width: 80px;
+        height: 80px;
+        border: 2px solid white;
+        border-radius: 80px;
+        
+    
+    }
+
+    .loader.active{
+        opacity: 1;
+    }
+    .loader .piece {
+        opacity: 0;
+        position: absolute;
+        top: 51.5%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        line-height: 30px;
+    }
     </style>
   </head>
   <body>
+    <div class='loading-wrapper'>
+        <div class="loader">LOADING.</div>
+    </div>
     <div id="map"></div>
       <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
       <script src="./donors.js"></script>
     <script>
+        
+        // set duration
+    (function(){
+        var duration = 350;
+
+        // break text into chunks
+
+        $(".loader")
+            .html(
+                "<div class='piece'>" +
+                $(".loader").html().match(/.{1,2}/g).join("</div><div class='piece'>") +
+                "</div>"
+            )
+            .addClass("active");
+
+        // animation function
+
+        var show = function(elem) {
+            $(".piece").css({opacity: 0});
+            $(elem).css({opacity: 1});
+
+            setTimeout(function(){
+                show(elem);
+            }, duration * ($(".piece").length));
+        }
+        $(".piece").each(function(i,e){
+            setTimeout(function(){
+                show(e);
+            }, duration * i);
+        })
+    })();
+        
       function initMap() {
+          setTimeout(function(){
         $('#map').css('height', window.innerHeight);
           
         var uluru = {lat: 40.982607, lng: -109.466988};
@@ -22,22 +91,38 @@
           zoom: 3,
           center: uluru
         });
+              
+        var cachedResults = {};
           
         var promises = donors.map(function(d){
 //            console.log(d.zip);
             return new Promise(function(res, rej){
+                if(cachedResults[d.zip]){
+                    return res({
+                        geo:cachedResults[d.zip].geo,
+                        amt: d.amt,
+                        isAnonymous: d.isAnonymous == "YES",
+                        name: d.name,
+                        comment: d.comment.replace(/\?/g,"'"),
+                        address: cachedResults[d.zip].address
+                    });
+                }
                 $.ajax({
                     url: `https://maps.googleapis.com/maps/api/geocode/json?address=${d.zip}&key=AIzaSyAOux0vFQ_Q50FaR2_Y_UtQCUDTX--QZE4`
                 }).done(function(r){
                     if(r.results[0]){
-                        res({
+                        var result = {
                             geo:r.results[0].geometry.location,
                             amt: d.amt,
                             isAnonymous: d.isAnonymous == "YES",
                             name: d.name,
                             comment: d.comment.replace(/\?/g,"'"),
                             address: r.results[0].formatted_address
-                        });
+                        }
+                        cachedResults[d.zip] = result;
+                        setTimeout(function() {
+                            res(result);
+                        },0);
                     }
                     else{
                         res(null);
@@ -99,7 +184,13 @@
                 }
             }).filter(m => m);
             
-        })
+        }).then(function(ems){
+            $('.loading-wrapper').hide();
+            $('#map').css('visibility', 'visible');
+            console.log(Object.keys(cachedResults).length);
+        });
+              
+          },1500);
 
       }
     </script>
