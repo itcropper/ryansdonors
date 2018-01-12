@@ -3,6 +3,10 @@
 <html>
   <head>
     <style>
+        body{
+            margin:0;
+            overflow: hidden;
+        }
        #map {
         height: 100%;
         width: 100%;
@@ -48,118 +52,160 @@
     </div>
     <div id="map"></div>
       <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-      <script src="./donors.js"></script>
+      <script src="./RealDonorData.js"></script>
+<!--      <script src="https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerclusterer/src/markerclusterer.js"></script>-->
     <script>
         
-        // set duration
-    (function(){
-        var duration = 350;
+  function downloadObjectAsJson(exportObj, exportName) {
+      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
+      var downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", exportName + ".json");
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+  }
 
-        // break text into chunks
-
-        $(".loader")
-            .html(
-                "<div class='piece'>" +
-                $(".loader").html().match(/.{1,2}/g).join("</div><div class='piece'>") +
-                "</div>"
-            )
-            .addClass("active");
-
-        // animation function
-
-        var show = function(elem) {
-            $(".piece").css({opacity: 0});
-            $(elem).css({opacity: 1});
-
-            setTimeout(function(){
-                show(elem);
-            }, duration * ($(".piece").length));
-        }
-        $(".piece").each(function(i,e){
-            setTimeout(function(){
-                show(e);
-            }, duration * i);
-        })
-    })();
-        
-      function initMap() {
-          setTimeout(function(){
+    $(window).on('resize', function(e){
         $('#map').css('height', window.innerHeight);
-          
-        var uluru = {lat: 40.982607, lng: -109.466988};
-        var map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 3,
-          center: uluru
-        });
-              
-        var cachedResults = {};
-          
-        var promises = donors.map(function(d){
-//            console.log(d.zip);
-            return new Promise(function(res, rej){
-                if(cachedResults[d.zip]){
-                    return res({
-                        geo:cachedResults[d.zip].geo,
-                        amt: d.amt,
-                        isAnonymous: d.isAnonymous == "YES",
-                        name: d.name,
-                        comment: d.comment.replace(/\?/g,"'"),
-                        address: cachedResults[d.zip].address
-                    });
-                }
-                $.ajax({
-                    url: `https://maps.googleapis.com/maps/api/geocode/json?address=${d.zip}&key=AIzaSyAOux0vFQ_Q50FaR2_Y_UtQCUDTX--QZE4`
-                }).done(function(r){
-                    if(r.results[0]){
-                        var result = {
-                            geo:r.results[0].geometry.location,
-                            amt: d.amt,
-                            isAnonymous: d.isAnonymous == "YES",
-                            name: d.name,
-                            comment: d.comment.replace(/\?/g,"'"),
-                            address: r.results[0].formatted_address
-                        }
-                        cachedResults[d.zip] = result;
-                        setTimeout(function() {
-                            res(result);
-                        },0);
-                    }
-                    else{
-                        res(null);
-                    }
-                });
-            })
-            
-        });
-        Promise.all(promises).then(function(vals){
-            var infoWindows = [];
-            var markers = vals.map(function(val){
-                if(val){
-                    
-                    var icon = {
-                        url: 'https://cdn0.iconfinder.com/data/icons/small-n-flat/24/678087-heart-128.png',
-                        scaledSize: new google.maps.Size(15, 15), // scaled size
-                        origin: new google.maps.Point(0,0), // origin
-                        anchor: new google.maps.Point(0, 0) // anchor
-                    };
-                    
-                    var geoLatOffset = Math.random() * (.01 - .0001) + .0001;
-                    var geoLngOffset = Math.random() * (.01 - .0001) + .0001;
-                    geoLatOffset *= Math.floor(Math.random()*2) == 1 ? 1 : -1;
-                    geoLngOffset *= Math.floor(Math.random()*2) == 1 ? 1 : -1;
-                    
-                    val.geo.lat += geoLatOffset;
-                    val.geo.lng += geoLngOffset;
-                    
-                    var marker = new google.maps.Marker({
+    });
+
+  // set duration
+  (function() {
+      var duration = 350;
+
+      // break text into chunks
+
+      $(".loader")
+          .html(
+              "<div class='piece'>" +
+              $(".loader").html().match(/.{1,2}/g).join("</div><div class='piece'>") +
+              "</div>"
+          )
+          .addClass("active");
+
+      // animation function
+
+      var show = function(elem) {
+          $(".piece").css({
+              opacity: 0
+          });
+          $(elem).css({
+              opacity: 1
+          });
+
+          setTimeout(function() {
+              show(elem);
+          }, duration * ($(".piece").length));
+      }
+      $(".piece").each(function(i, e) {
+          setTimeout(function() {
+              show(e);
+          }, duration * i);
+      })
+  })();
+
+  function initMap() {
+      setTimeout(function() {
+          $('#map').css('height', window.innerHeight);
+
+          var uluru = {
+              lat: 40.982607,
+              lng: -109.466988
+          };
+          var map = new google.maps.Map(document.getElementById('map'), {
+              zoom: 3,
+              center: uluru
+          });
+
+          var cachedResults = {};
+
+          //        var promises = donors.map(function(d){
+          ////            console.log(d.zip);
+          //            return new Promise(function(res, rej){
+          //                if(cachedResults[d.zip]){
+          //                    return res({
+          //                        geo:cachedResults[d.zip].geo,
+          //                        amt: d.amt,
+          //                        isAnonymous: d.isAnonymous == "YES",
+          //                        name: d.name,
+          //                        comment: d.comment.replace(/\?/g,"'"),
+          //                        address: cachedResults[d.zip].address
+          //                    });
+          //                }
+          //                $.ajax({
+          //                    url: `https://maps.googleapis.com/maps/api/geocode/json?address=${d.zip}&key=AIzaSyAOux0vFQ_Q50FaR2_Y_UtQCUDTX--QZE4`
+          //                }).done(function(r){
+          //                    if(r.results[0]){
+          //                        var result = {
+          //                            geo:r.results[0].geometry.location,
+          //                            amt: d.amt,
+          //                            isAnonymous: d.isAnonymous == "YES",
+          //                            name: d.name,
+          //                            comment: d.comment.replace(/\?/g,"'"),
+          //                            address: r.results[0].formatted_address
+          //                        }
+          //                        cachedResults[d.zip] = result;
+          //                        setTimeout(function() {
+          //                            res(result);
+          //                        },0);
+          //                    }
+          //                    else{
+          //                        res(null);
+          //                    }
+          //                });
+          //            })
+          //            
+          //        });
+
+
+
+          function removeWindows() {
+              openWindow.close();
+          }
+          var openWindow = null;
+          var promises = donors.map(function(val) {
+
+              return new Promise(function(res, rej) {
+
+
+
+                  var mcOptions = {
+                      gridSize: 50,
+                      maxZoom: 15
+                  };
+
+                  if (!val || !val.geo) {
+                      res(null);
+                      return;
+                  }
+                  //downloadObjectAsJson(vals, "RealDonorData.json");
+                  //var mc = new MarkerClusterer(map, [], mcOptions);
+
+
+                  var icon = {
+                      url: 'https://cdn0.iconfinder.com/data/icons/small-n-flat/24/678087-heart-128.png',
+                      scaledSize: new google.maps.Size(15, 15), // scaled size
+                      origin: new google.maps.Point(0, 0), // origin
+                      anchor: new google.maps.Point(0, 0) // anchor
+                  };
+
+                  var geoLatOffset = Math.random() * (.01 - .0001) + .0001;
+                  var geoLngOffset = Math.random() * (.01 - .0001) + .0001;
+                  geoLatOffset *= Math.floor(Math.random() * 2) == 1 ? 1 : -1;
+                  geoLngOffset *= Math.floor(Math.random() * 2) == 1 ? 1 : -1;
+
+                  val.geo.lat += geoLatOffset;
+                  val.geo.lng += geoLngOffset;
+
+                  var marker = new google.maps.Marker({
                       position: val.geo,
                       map: map,
                       //icon: icon
-                    });
-                    
-                    
-                    var name = val.isAnonymous ? "Anonymous" : val.name;
-                    var content = `
+                  });
+
+
+                  var name = val.isAnonymous ? "Anonymous" : val.name;
+                  var content = `
                         <div> 
                             <h1 class="firstHeading">${name}</h1>
                             <p>${val.address}</p>
@@ -167,32 +213,40 @@
                             <p>${val.comment}</p>
                         </div>
                     `,
-                    infowindow = new google.maps.InfoWindow({
-                      content: content
-                    });
-                    
-                    infoWindows.push(infowindow);
-                    
-                    google.maps.event.addListener(marker, 'click', (function(marker) { 
-                       return function() {  
-                           infoWindows.forEach(function(i) {i.close();});
-                           infowindow.setContent(content);  
-                           infowindow.open(map, marker);  
-                       }  
-                     })(marker));  
-                    return marker;
-                }
-            }).filter(m => m);
-            
-        }).then(function(ems){
-            $('.loading-wrapper').hide();
-            $('#map').css('visibility', 'visible');
-            console.log(Object.keys(cachedResults).length);
-        });
-              
-          },1500);
+                      infowindow = new google.maps.InfoWindow({
+                          content: content
+                      });
 
-      }
+                  //infoWindows.push(infowindow);
+
+                  map.addListener('zoom_changed', removeWindows);
+                  map.addListener('dragstart', removeWindows);
+                  map.addListener('resize', removeWindows);
+
+
+                  google.maps.event.addListener(marker, 'click', (function(marker) {
+                      return function() {
+                          if (openWindow) openWindow.close();
+                          infowindow.setContent(content);
+                          infowindow.open(map, marker);
+                          openWindow = infowindow;
+                      }
+                  })(marker));
+                  res(marker);
+
+              })
+          });
+
+          Promise.all(promises).then(function(ems) {
+              $('.loading-wrapper').hide();
+              $('#map').css('visibility', 'visible');
+              console.log(Object.keys(cachedResults).length);
+              //mc.addMarkers(ems);
+          });
+
+      }, 1500);
+
+  }
     </script>
     <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAOux0vFQ_Q50FaR2_Y_UtQCUDTX--QZE4&callback=initMap">
